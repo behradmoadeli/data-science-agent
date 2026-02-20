@@ -66,7 +66,7 @@ class SQLDatabaseAgent(BaseAgent):
 
     Parameters
     ----------
-    model : ChatOpenAI or langchain.llms.base.LLM
+    model : ChatGoogleGenerativeAI or langchain.llms.base.LLM
         The language model used to generate the SQL code.
     connection : sqlalchemy.engine.base.Engine or sqlalchemy.engine.base.Connection
         The SQLAlchemy connection (or engine) to the database.
@@ -125,14 +125,18 @@ class SQLDatabaseAgent(BaseAgent):
     --------
     ```python
     import sqlalchemy as sql
-    from langchain_openai import ChatOpenAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
     from ai_data_science_team.agents import SQLDatabaseAgent
+    import os
+    from dotenv import load_dotenv
+
+    load_dotenv()
 
     # Create the engine/connection
     sql_engine = sql.create_engine("sqlite:///data/my_database.db")
     conn = sql_engine.connect()
 
-    llm = ChatOpenAI(model="gpt-4o-mini")
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     sql_database_agent = SQLDatabaseAgent(
         model=llm,
@@ -496,13 +500,17 @@ def make_sql_database_agent(
     ```python
     from ai_data_science_team.agents import make_sql_database_agent
     import sqlalchemy as sql
-    from langchain_openai import ChatOpenAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    import os
+    from dotenv import load_dotenv
+
+    load_dotenv()
 
     sql_engine = sql.create_engine("sqlite:///data/leads_scored.db")
 
     conn = sql_engine.connect()
 
-    llm = ChatOpenAI(model="gpt-4o-mini")
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     sql_agent = make_sql_database_agent(
         model=llm,
@@ -826,9 +834,9 @@ def {function_name}(connection):
             error_key="sql_database_error",
             code_snippet_key="sql_database_function",
             agent_function_name=state.get("sql_database_function_name"),
-            post_processing=lambda df: df.to_dict()
-            if isinstance(df, pd.DataFrame)
-            else df,
+            post_processing=lambda df: (
+                df.to_dict() if isinstance(df, pd.DataFrame) else df
+            ),
             error_message_prefix="An error occurred during executing the sql database pipeline: ",
         )
 
@@ -992,7 +1000,16 @@ def _validate_sql(sql_text: str, safe_mode: bool = True):
     lowered = sql_text.strip().lower()
     if not lowered.startswith("select"):
         return "Only read-only SELECT queries are allowed (safe_mode=True)."
-    unsafe_keywords = ["insert", "update", "delete", "drop", "alter", "truncate", "create", "replace"]
+    unsafe_keywords = [
+        "insert",
+        "update",
+        "delete",
+        "drop",
+        "alter",
+        "truncate",
+        "create",
+        "replace",
+    ]
     if any(kw in lowered for kw in unsafe_keywords):
         return "Write operations are not allowed; ensure the query is read-only (safe_mode=True)."
     return None

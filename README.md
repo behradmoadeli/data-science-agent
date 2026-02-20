@@ -47,12 +47,18 @@ Full app docs: `apps/ai-pipeline-studio-app/README.md`
 
 ### Requirements
 - Python 3.10+
-- OpenAI API key (or Ollama for local models)
+- Gemini API key (or Ollama for local models)
 
 ### Install the app and library
 Clone the repo and install in editable mode:
 ```bash
 pip install -e .
+```
+
+### Configure your API key
+Create a `.env` file in the project root with your Gemini API key:
+```bash
+GEMINI_API_KEY=your_api_key_here
 ```
 
 ### Run the AI Pipeline Studio app
@@ -92,12 +98,26 @@ See all apps in `apps/`. Notable apps:
 - EDA Explorer App: `apps/exploratory-copilot-app/`
 - Pandas Data Analyst App: `apps/pandas-data-analyst-app/`
 
-## Use OpenAI
+## Use Gemini
 
 ```python
-from langchain_openai import ChatOpenAI
-llm = ChatOpenAI(
-    model_name="gpt-4.1-mini",
+import os
+from dotenv import load_dotenv
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+load_dotenv()
+
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.0-flash-exp",
+    google_api_key=os.getenv("GEMINI_API_KEY")
+)
+```
+
+Alternatively, you can use gemini-1.5-flash:
+```python
+llm = ChatGoogleGenerativeAI(
+    model="gemini-1.5-flash",
+    google_api_key=os.getenv("GEMINI_API_KEY")
 )
 ```
 

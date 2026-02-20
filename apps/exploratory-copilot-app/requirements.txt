@@ -4,9 +4,10 @@ sqlalchemy
 pandas
 asyncio
 langchain
-langchain-openai
+langchain-google-genai
 langgraph
-openai
+google-generativeai
+python-dotenv
 missingno
 sweetviz
 pytimetk

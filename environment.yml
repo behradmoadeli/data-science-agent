@@ -1,0 +1,59 @@
+name: ai-data-science-team
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Base Python (Pin exactly to 3.11 to avoid protobuf/grpcio solver conflicts on 3.12+)
+  - python=3.11
+  
+  # Core Data Science Packages
+  - pandas
+  - numpy
+  - scikit-learn
+  
+  # Machine Learning & AutoML
+  - xgboost
+  - mlflow
+  
+  # Database & Data Access
+  - sqlalchemy
+  - openpyxl
+  
+  # Utilities
+  - psutil
+  - python-dotenv
+  
+  # UI Framework
+  - streamlit
+  
+  # Visualization
+  - plotly
+  - missingno
+  
+  # EDA & Data Analysis Tools
+  # Note: pytimetk, sweetviz, and dtale will be installed via pip as they have better pip support
+  
+  # Pip packages - LangChain ecosystem and packages not available/stable via conda
+  - pip
+  - pip:
+      # LangChain Core & Extensions (fast-moving, best installed via pip)
+      - langchain>=1.2.0              # Latest: 1.2.10
+      - langchain-community>=0.4.0     # Latest: 0.4.1
+      - langchain-experimental
+      - langchain-ollama>=1.0.0        # Latest: 1.0.1
+      - langchain-google-genai>=4.2.0  # Latest: 4.2.1
+      - langgraph>=1.0.9               # Latest: 1.0.9
+      
+      # AI/LLM APIs
+      - google-generativeai  # DEPRECATED (EOL Nov 2025) but still used by langchain-google-genai
+      
+      # Streamlit Components
+      - streamlit-flow-component>=1.6.0  # Latest: 1.6.1
+      
+      # Machine Learning & AutoML (pip-only)
+      - h2o  # Java-based AutoML platform, not available via conda
+      
+      # EDA & Data Science Tools
+      - pytimetk
+      - sweetviz
+      - dtale

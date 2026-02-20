@@ -13,7 +13,7 @@ import os
 import json
 import inspect
 import shutil
-from openai import OpenAI
+from dotenv import load_dotenv
 import pandas as pd
 import sqlalchemy as sql
 import plotly.colors as pc
@@ -22,13 +22,16 @@ import streamlit as st
 import streamlit.components.v1 as components
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_community.chat_message_histories import StreamlitChatMessageHistory
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 try:
     from langchain_ollama import ChatOllama  # type: ignore
 except Exception:  # pragma: no cover - optional dependency
     ChatOllama = None
 from langgraph.checkpoint.memory import MemorySaver
+
+# Load environment variables
+load_dotenv()
 
 from ai_data_science_team.agents.data_loader_tools_agent import DataLoaderToolsAgent
 from ai_data_science_team.agents.data_wrangling_agent import DataWranglingAgent
@@ -58,7 +61,7 @@ st.markdown(
         [
             "<style>",
             "@media (min-width: 1100px) {",
-            "  [data-testid=\"stDialog\"] [role=\"dialog\"] {",
+            '  [data-testid="stDialog"] [role="dialog"] {',
             "    width: calc(100vw - 2rem) !important;",
             "    max-width: calc(100vw - 2rem) !important;",
             "  }",
@@ -2456,9 +2459,7 @@ def _update_pipeline_studio_artifact_store_for_dataset(
         rec_art = rec.get("artifacts") if isinstance(rec.get("artifacts"), dict) else {}
         rec_art.update(artifacts)
         incoming_keys = {
-            str(k)
-            for k in artifacts.keys()
-            if isinstance(k, str) and str(k).strip()
+            str(k) for k in artifacts.keys() if isinstance(k, str) and str(k).strip()
         }
         if incoming_keys:
             cleared_keys = rec.get("cleared_keys")
@@ -3393,9 +3394,11 @@ def _pipeline_studio_chat_context(*, include_code: bool = False) -> str:
         if len(datasets) > 1:
             ordered = sorted(
                 datasets.items(),
-                key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-                if isinstance(kv[1], dict)
-                else 0.0,
+                key=lambda kv: (
+                    float(kv[1].get("created_ts") or 0.0)
+                    if isinstance(kv[1], dict)
+                    else 0.0
+                ),
                 reverse=True,
             )
             lines.append(f"available_datasets: {len(datasets)}")
@@ -4388,7 +4391,9 @@ with st.sidebar:
                 selected_dir_name = st.selectbox(
                     "Saved projects",
                     options=[""] + options,
-                    format_func=lambda x: "Select a project…" if not x else _fmt_project_dir(str(x)),
+                    format_func=lambda x: (
+                        "Select a project…" if not x else _fmt_project_dir(str(x))
+                    ),
                     key="pipeline_studio_sidebar_project_select",
                 )
                 rehydrate = st.checkbox(
@@ -4436,27 +4441,33 @@ with st.sidebar:
     st.header("LLM")
     llm_provider = st.selectbox(
         "Provider",
-        ["OpenAI", "Ollama"],
+        ["Gemini", "Ollama"],
         index=0,
         key="llm_provider",
-        help="Choose OpenAI (cloud) or Ollama (local).",
+        help="Choose Gemini (cloud) or Ollama (local).",
     )
 
     ollama_base_url = None
-    if llm_provider == "OpenAI":
-        openai_key_input = st.text_input(
-            "OpenAI API key",
-            type="password",
-            value=st.session_state.get("OPENAI_API_KEY") or "",
-            key="openai_api_key_input",
-            help="Required when using OpenAI models.",
-        )
-        openai_key = (openai_key_input or "").strip()
-        st.session_state["OPENAI_API_KEY"] = openai_key
+    if llm_provider == "Gemini":
+        # Try to load from environment first
+        default_api_key = os.getenv("GEMINI_API_KEY", "")
 
-        if openai_key:
+        gemini_key_input = st.text_input(
+            "Gemini API key",
+            type="password",
+            value=st.session_state.get("GEMINI_API_KEY") or default_api_key,
+            key="gemini_api_key_input",
+            help="Required when using Gemini models. Can also be set in .env file as GEMINI_API_KEY.",
+        )
+        gemini_key = (gemini_key_input or "").strip()
+        st.session_state["GEMINI_API_KEY"] = gemini_key
+
+        if gemini_key:
             try:
-                _ = OpenAI(api_key=openai_key).models.list()
+                # Test the key by creating an LLM instance
+                test_llm = ChatGoogleGenerativeAI(
+                    model="gemini-2.0-flash-exp", google_api_key=gemini_key
+                )
                 key_status = "ok"
                 st.success("API Key is valid!")
             except Exception as e:
@@ -4464,15 +4475,15 @@ with st.sidebar:
                 st.error(f"Invalid API Key: {e}")
         else:
             st.info(
-                "Please enter your OpenAI API key to proceed (or switch to Ollama)."
+                "Please enter your Gemini API key to proceed (or switch to Ollama)."
             )
             st.stop()
 
         model_choice = st.selectbox(
             "Model",
             [
-                "gpt-4.1-mini",
-                "gpt-4.1",
+                "gemini-2.0-flash-exp",
+                "gemini-1.5-flash",
                 "gpt-4o-mini",
                 "gpt-4o",
                 "gpt-5-mini",
@@ -4511,9 +4522,7 @@ with st.sidebar:
 
         model_choice = ollama_model
 
-        if st.button(
-            "Check Ollama connection", width="stretch", key="ollama_check"
-        ):
+        if st.button("Check Ollama connection", width="stretch", key="ollama_check"):
             try:
                 from urllib.request import Request, urlopen
                 import json as _json
@@ -4621,9 +4630,11 @@ with st.sidebar:
     if datasets:
         ordered = sorted(
             [(did, ent) for did, ent in datasets.items() if did in visible_set],
-            key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-            if isinstance(kv[1], dict)
-            else 0.0,
+            key=lambda kv: (
+                float(kv[1].get("created_ts") or 0.0)
+                if isinstance(kv[1], dict)
+                else 0.0
+            ),
             reverse=True,
         )
         options = [""] + [did for did, _ in ordered]
@@ -4884,15 +4895,15 @@ with st.sidebar:
         st.session_state.checkpointer = get_checkpointer() if add_memory else None
 
 # LLM credentials are only required when running chat (Pipeline Studio + previews should still work).
-llm_provider_selected = st.session_state.get("llm_provider") or "OpenAI"
-resolved_api_key = (st.session_state.get("OPENAI_API_KEY") or "").strip() or None
+llm_provider_selected = st.session_state.get("llm_provider") or "Gemini"
+resolved_api_key = (st.session_state.get("GEMINI_API_KEY") or "").strip() or None
 resolved_ollama_model = (st.session_state.get("ollama_model") or "").strip() or None
 
 
 def build_team(
     llm_provider: str,
     model_name: str,
-    openai_api_key: str | None,
+    gemini_api_key: str | None,
     ollama_base_url: str | None,
     use_memory: bool,
     sql_url: str,
@@ -4903,7 +4914,7 @@ def build_team(
     mlflow_experiment_name: str,
     debug_mode: bool = False,
 ):
-    llm_provider = (llm_provider or "OpenAI").strip()
+    llm_provider = (llm_provider or "Gemini").strip()
     if llm_provider.lower() == "ollama":
         if ChatOllama is None:
             raise RuntimeError(
@@ -4922,23 +4933,11 @@ def build_team(
                 kwargs["base_url"] = base_url
         llm = ChatOllama(**kwargs)
     else:
-
-        def _openai_requires_responses(model: str | None) -> bool:
-            model = model.strip().lower() if isinstance(model, str) else ""
-            if not model:
-                return False
-            if "codex" in model:
-                return True
-            return model in {"gpt-5.1-codex-mini"}
-
         llm_kwargs: dict[str, object] = {
             "model": model_name,
-            "api_key": openai_api_key,
+            "google_api_key": gemini_api_key,
         }
-        if _openai_requires_responses(model_name):
-            llm_kwargs["use_responses_api"] = True
-            llm_kwargs["output_version"] = "responses/v1"
-        llm = ChatOpenAI(**llm_kwargs)
+        llm = ChatGoogleGenerativeAI(**llm_kwargs)
     workflow_planner_agent = WorkflowPlannerAgent(llm)
     data_loader_agent = DataLoaderToolsAgent(
         llm, invoke_react_agent_kwargs={"recursion_limit": 4}
@@ -4946,9 +4945,7 @@ def build_team(
     data_wrangling_agent = DataWranglingAgent(llm, log=False)
     data_cleaning_agent = DataCleaningAgent(llm, log=False)
     eda_tools_agent = EDAToolsAgent(llm, log_tool_calls=True)
-    data_visualization_agent = DataVisualizationAgent(
-        llm, log=bool(debug_mode)
-    )
+    data_visualization_agent = DataVisualizationAgent(llm, log=bool(debug_mode))
     # SQL connection is optional; default to in-memory sqlite to satisfy constructor.
     resolved_sql_url = (sql_url or DEFAULT_SQL_URL).strip() or DEFAULT_SQL_URL
     engine_kwargs: dict = {}
@@ -5237,9 +5234,11 @@ def _render_analysis_detail(detail: dict, key_suffix: str) -> None:
         if datasets_now:
             ordered_now = sorted(
                 datasets_now.items(),
-                key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-                if isinstance(kv[1], dict)
-                else 0.0,
+                key=lambda kv: (
+                    float(kv[1].get("created_ts") or 0.0)
+                    if isinstance(kv[1], dict)
+                    else 0.0
+                ),
                 reverse=True,
             )
             options_now = [did for did, _e in ordered_now if isinstance(did, str)]
@@ -5824,9 +5823,9 @@ chat_dataset_options = [did for did in datasets_for_chat.keys() if did in visibl
 if chat_dataset_options:
     ordered_chat = sorted(
         [(did, datasets_for_chat.get(did)) for did in chat_dataset_options],
-        key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-        if isinstance(kv[1], dict)
-        else 0.0,
+        key=lambda kv: (
+            float(kv[1].get("created_ts") or 0.0) if isinstance(kv[1], dict) else 0.0
+        ),
         reverse=True,
     )
     chat_dataset_options = [did for did, _e in ordered_chat]
@@ -5873,10 +5872,10 @@ prompt = (
     pending_prompt if pending_prompt else st.chat_input("Ask the data science team...")
 )
 if prompt:
-    if llm_provider_selected == "OpenAI":
+    if llm_provider_selected == "Gemini":
         if not resolved_api_key or key_status == "bad":
             st.error(
-                "OpenAI API key is required and must be valid. Enter it in the sidebar."
+                "Gemini API key is required and must be valid. Enter it in the sidebar."
             )
             st.stop()
     else:
@@ -5951,7 +5950,7 @@ if prompt:
         team = build_team(
             llm_provider_selected,
             model_choice,
-            resolved_api_key if llm_provider_selected == "OpenAI" else None,
+            resolved_api_key if llm_provider_selected == "Gemini" else None,
             st.session_state.get("ollama_base_url"),
             add_memory,
             st.session_state.get("sql_url", DEFAULT_SQL_URL),
@@ -6863,9 +6862,7 @@ if prompt:
                     }
                 if detail.get("data_visualization_warning") is not None:
                     cur["viz_warning"] = {
-                        "message": _safe_json(
-                            detail.get("data_visualization_warning")
-                        ),
+                        "message": _safe_json(detail.get("data_visualization_warning")),
                         "turn_idx": idx,
                         "created_ts": ts,
                     }
@@ -8781,9 +8778,7 @@ def _render_pipeline_studio() -> None:
 
     if not studio_datasets:
         st.info("No pipeline yet. Load data and run a transform to build one.")
-        project_notice = st.session_state.pop(
-            "pipeline_studio_project_notice", None
-        )
+        project_notice = st.session_state.pop("pipeline_studio_project_notice", None)
         if isinstance(project_notice, str) and project_notice.strip():
             if project_notice.lower().startswith("error:"):
                 st.error(project_notice.replace("Error:", "", 1).strip())
@@ -8812,15 +8807,11 @@ def _render_pipeline_studio() -> None:
                 )
                 err = res.get("error")
                 if isinstance(err, str) and err:
-                    st.session_state["pipeline_studio_project_notice"] = (
-                        f"Error: {err}"
-                    )
+                    st.session_state["pipeline_studio_project_notice"] = f"Error: {err}"
                     return
                 saved_dir = res.get("project_dir")
                 if isinstance(saved_dir, str) and saved_dir:
-                    data_mode = (
-                        "metadata-only" if not bool(include_data) else "full"
-                    )
+                    data_mode = "metadata-only" if not bool(include_data) else "full"
                     if target_dir:
                         st.session_state["pipeline_studio_project_notice"] = (
                             f"Overwrote {data_mode} project at `{target_dir}`."
@@ -8836,8 +8827,7 @@ def _render_pipeline_studio() -> None:
                             "pipeline_studio_loaded_project_dir"
                         )
                         if not (
-                            isinstance(current_loaded, str)
-                            and current_loaded.strip()
+                            isinstance(current_loaded, str) and current_loaded.strip()
                         ):
                             st.session_state["pipeline_studio_loaded_project_dir"] = (
                                 saved_dir
@@ -8872,7 +8862,9 @@ def _render_pipeline_studio() -> None:
                 value=default_project_name,
                 key="pipeline_studio_project_name",
             )
-            loaded_project_dir = st.session_state.get("pipeline_studio_loaded_project_dir")
+            loaded_project_dir = st.session_state.get(
+                "pipeline_studio_loaded_project_dir"
+            )
             loaded_project_dir = (
                 loaded_project_dir
                 if isinstance(loaded_project_dir, str) and loaded_project_dir.strip()
@@ -8891,7 +8883,9 @@ def _render_pipeline_studio() -> None:
             loaded_name = (
                 loaded_name
                 if isinstance(loaded_name, str) and loaded_name.strip()
-                else os.path.basename(loaded_project_dir) if loaded_project_dir else None
+                else os.path.basename(loaded_project_dir)
+                if loaded_project_dir
+                else None
             )
             save_as_new = False
             if loaded_project_dir:
@@ -8931,12 +8925,8 @@ def _render_pipeline_studio() -> None:
             if not projects:
                 st.caption("No saved projects yet.")
             else:
-                dir_options = [
-                    p.get("dir_name") for p in projects if p.get("dir_name")
-                ]
-                dir_options = [
-                    x for x in dir_options if isinstance(x, str) and x
-                ]
+                dir_options = [p.get("dir_name") for p in projects if p.get("dir_name")]
+                dir_options = [x for x in dir_options if isinstance(x, str) and x]
 
                 def _fmt_project(dir_name: str) -> str:
                     rec = next(
@@ -9072,9 +9062,11 @@ def _render_pipeline_studio() -> None:
                 )
                 ordered_ids = sorted(
                     studio_datasets.items(),
-                    key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-                    if isinstance(kv[1], dict)
-                    else 0.0,
+                    key=lambda kv: (
+                        float(kv[1].get("created_ts") or 0.0)
+                        if isinstance(kv[1], dict)
+                        else 0.0
+                    ),
                     reverse=True,
                 )
                 pick_ids = [
@@ -10163,14 +10155,10 @@ def _render_pipeline_studio() -> None:
                             )
                             if isinstance(skipped, list) and skipped:
                                 st.markdown("**Skipped**")
-                                st.dataframe(
-                                    pd.DataFrame(skipped), width="stretch"
-                                )
+                                st.dataframe(pd.DataFrame(skipped), width="stretch")
                             if isinstance(failed, list) and failed:
                                 st.markdown("**Failures**")
-                                st.dataframe(
-                                    pd.DataFrame(failed), width="stretch"
-                                )
+                                st.dataframe(pd.DataFrame(failed), width="stretch")
                             if pipeline_hash and stale_ids:
                                 st.markdown("---")
                                 st.button(
@@ -10230,9 +10218,7 @@ def _render_pipeline_studio() -> None:
                             if isinstance(k, str) and isinstance(v, str) and k and v
                         ]
                         if mapping_rows:
-                            st.dataframe(
-                                pd.DataFrame(mapping_rows), width="stretch"
-                            )
+                            st.dataframe(pd.DataFrame(mapping_rows), width="stretch")
 
                         c_hide_stale, c_hide_old = st.columns(2)
                         with c_hide_stale:
@@ -10550,7 +10536,9 @@ def _render_pipeline_studio() -> None:
                             ) -> bool:
                                 field = artifact_fields.get(key)
                                 for src in (entry_art, persisted_art):
-                                    rec = src.get(key) if isinstance(src, dict) else None
+                                    rec = (
+                                        src.get(key) if isinstance(src, dict) else None
+                                    )
                                     if not isinstance(rec, dict):
                                         continue
                                     if field:
@@ -10588,7 +10576,9 @@ def _render_pipeline_studio() -> None:
                                     or ""
                                 )
                                 entry_art = idx_map.get(did)
-                                entry_art = entry_art if isinstance(entry_art, dict) else {}
+                                entry_art = (
+                                    entry_art if isinstance(entry_art, dict) else {}
+                                )
                                 fp = entry_obj.get("fingerprint")
                                 fp = fp if isinstance(fp, str) and fp else None
                                 persisted = {}
@@ -10669,7 +10659,9 @@ def _render_pipeline_studio() -> None:
                                         ]
                                     else:
                                         selected_rows = edited_summary.iloc[0:0]
-                                    for node_label in selected_rows.get("Node", []).tolist():
+                                    for node_label in selected_rows.get(
+                                        "Node", []
+                                    ).tolist():
                                         m = re.search(
                                             r"\(([^()]*)\)\s*$", str(node_label)
                                         )
@@ -10931,9 +10923,11 @@ def _render_pipeline_studio() -> None:
                     else:
                         ordered_ids = sorted(
                             studio_datasets.items(),
-                            key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-                            if isinstance(kv[1], dict)
-                            else 0.0,
+                            key=lambda kv: (
+                                float(kv[1].get("created_ts") or 0.0)
+                                if isinstance(kv[1], dict)
+                                else 0.0
+                            ),
                             reverse=True,
                         )
                         wizard_ids = [
@@ -11763,18 +11757,14 @@ def _render_pipeline_studio() -> None:
                                 st.info("No tabular data available for A.")
                             else:
                                 st.caption(f"Shape: {df_a.shape[0]} × {df_a.shape[1]}")
-                                st.dataframe(
-                                    df_a.head(int(rows)), width="stretch"
-                                )
+                                st.dataframe(df_a.head(int(rows)), width="stretch")
                         with cb:
                             st.markdown(f"**B (compare): {_node_label(b_id)}**")
                             if df_b is None:
                                 st.info("No tabular data available for B.")
                             else:
                                 st.caption(f"Shape: {df_b.shape[0]} × {df_b.shape[1]}")
-                                st.dataframe(
-                                    df_b.head(int(rows)), width="stretch"
-                                )
+                                st.dataframe(df_b.head(int(rows)), width="stretch")
 
                     with cmp_tabs[2]:
                         ga = _get_plotly_graph_json(a_id, a_entry)
@@ -13106,9 +13096,11 @@ def _render_pipeline_studio() -> None:
                     )
                     ordered_dataset_ids = sorted(
                         studio_datasets.items(),
-                        key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-                        if isinstance(kv[1], dict)
-                        else 0.0,
+                        key=lambda kv: (
+                            float(kv[1].get("created_ts") or 0.0)
+                            if isinstance(kv[1], dict)
+                            else 0.0
+                        ),
                         reverse=True,
                     )
                     all_dataset_ids = [

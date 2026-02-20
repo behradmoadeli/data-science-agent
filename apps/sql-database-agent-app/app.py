@@ -7,7 +7,8 @@
 # Imports
 # !pip install git+https://github.com/business-science/ai-data-science-team.git --upgrade
 
-from openai import OpenAI
+import os
+from dotenv import load_dotenv
 
 import streamlit as st
 import sqlalchemy as sql
@@ -15,9 +16,12 @@ import pandas as pd
 import asyncio
 
 from langchain_community.chat_message_histories import StreamlitChatMessageHistory
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from ai_data_science_team.agents import SQLDatabaseAgent
+
+# Load environment variables
+load_dotenv()
 
 # * APP INPUTS ----
 
@@ -26,13 +30,16 @@ DB_OPTIONS = {
     "Northwind Database": "sqlite:///data/northwind.db",
 }
 
-MODEL_LIST = ['gpt-4o-mini', 'gpt-4o']
+MODEL_LIST = ["gemini-2.0-flash-exp", "gemini-1.5-flash"]
 
 TITLE = "Your SQL Database Agent"
 
 # * STREAMLIT APP SETUP ----
 
-st.set_page_config(page_title=TITLE, page_icon="📊", )
+st.set_page_config(
+    page_title=TITLE,
+    page_icon="📊",
+)
 st.title(TITLE)
 
 st.markdown("""
@@ -64,45 +71,47 @@ sql_engine = sql.create_engine(st.session_state["PATH_DB"])
 
 conn = sql_engine.connect()
 
-# * OpenAI API Key
+# * Gemini API Key
 
-st.sidebar.header("Enter your OpenAI API Key")
+st.sidebar.header("Enter your Gemini API Key")
 
-st.session_state["OPENAI_API_KEY"] = st.sidebar.text_input("API Key", type="password", help="Your OpenAI API key is required for the app to function.")
+# Try to load from environment first
+default_api_key = os.getenv("GEMINI_API_KEY", "")
 
-# Test OpenAI API Key
-if st.session_state["OPENAI_API_KEY"]:
-    # Set the API key for OpenAI
-    client = OpenAI(api_key=st.session_state["OPENAI_API_KEY"])
-    
-    # Test the API key (optional)
+st.session_state["GEMINI_API_KEY"] = st.sidebar.text_input(
+    "API Key",
+    value=default_api_key,
+    type="password",
+    help="Your Gemini API key is required for the app to function. You can also set it in a .env file as GEMINI_API_KEY.",
+)
+
+# Test Gemini API Key
+if st.session_state["GEMINI_API_KEY"]:
     try:
-        # Example: Fetch models to validate the key
-        models = client.models.list()
+        # Test by creating an LLM instance
+        test_llm = ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash-exp",
+            google_api_key=st.session_state["GEMINI_API_KEY"],
+        )
         st.success("API Key is valid!")
     except Exception as e:
         st.error(f"Invalid API Key: {e}")
 else:
-    st.info("Please enter your OpenAI API Key to proceed.")
+    st.info("Please enter your Gemini API Key to proceed.")
     st.stop()
 
 
-# * OpenAI Model Selection
+# * Gemini Model Selection
 
-model_option = st.sidebar.selectbox(
-    "Choose OpenAI model",
-    MODEL_LIST,
-    index=0
+model_option = st.sidebar.selectbox("Choose Gemini model", MODEL_LIST, index=0)
+
+GEMINI_LLM = ChatGoogleGenerativeAI(
+    model=model_option, google_api_key=st.session_state["GEMINI_API_KEY"]
 )
 
-OPENAI_LLM = ChatOpenAI(
-    model = model_option,
-    api_key=st.session_state["OPENAI_API_KEY"]
-)
+llm = GEMINI_LLM
 
-llm = OPENAI_LLM
-
-# * STREAMLIT 
+# * STREAMLIT
 
 # Set up memory
 msgs = StreamlitChatMessageHistory(key="langchain_messages")
@@ -112,6 +121,7 @@ if len(msgs.messages) == 0:
 # Initialize dataframe storage in session state
 if "dataframes" not in st.session_state:
     st.session_state.dataframes = []
+
 
 # Function to display chat messages including Plotly charts and dataframes
 def display_chat_history():
@@ -123,17 +133,19 @@ def display_chat_history():
             else:
                 st.write(msg.content)
 
+
 # Render current messages from StreamlitChatMessageHistory
 display_chat_history()
 
 # Create the SQL Database Agent
 sql_db_agent = SQLDatabaseAgent(
-    model = llm,
+    model=llm,
     connection=conn,
     n_samples=1,
-    log = False,
+    log=False,
     bypass_recommended_steps=True,
 )
+
 
 # Handle the question async
 async def handle_question(question):
@@ -143,26 +155,26 @@ async def handle_question(question):
     return sql_db_agent
 
 
-if st.session_state["PATH_DB"] and (question := st.chat_input("Enter your question here:", key="query_input")):
-    
-    if not st.session_state["OPENAI_API_KEY"]:
-        st.error("Please enter your OpenAI API Key to proceed.")
+if st.session_state["PATH_DB"] and (
+    question := st.chat_input("Enter your question here:", key="query_input")
+):
+    if not st.session_state["GEMINI_API_KEY"]:
+        st.error("Please enter your Gemini API Key to proceed.")
         st.stop()
-    
+
     with st.spinner("Thinking..."):
-        
         st.chat_message("human").write(question)
         msgs.add_user_message(question)
-        
-        # Run the app       
+
+        # Run the app
         error_occured = False
-        try: 
+        try:
             print(st.session_state["PATH_DB"])
             result = asyncio.run(handle_question(question))
         except Exception as e:
             error_occured = True
             print(e)
-            
+
             response_text = f"""
             I'm sorry. I am having difficulty answering that question. You can try providing more details and I'll do my best to provide an answer.
             
@@ -171,18 +183,16 @@ if st.session_state["PATH_DB"] and (question := st.chat_input("Enter your questi
             msgs.add_ai_message(response_text)
             st.chat_message("ai").write(response_text)
             st.error(f"Error: {e}")
-        
+
         # Generate the Results
         if not error_occured:
-            
             sql_query = result.get_sql_query_code()
             response_df = result.get_data_sql()
-            
+
             if sql_query:
-                
                 # Store the SQL
                 response_1 = f"### SQL Results:\n\nSQL Query:\n\n```sql\n{sql_query}\n```\n\nResult:"
-                
+
                 # Store the forecast df and keep its index
                 df_index = len(st.session_state.dataframes)
                 st.session_state.dataframes.append(response_df)
@@ -190,8 +200,7 @@ if st.session_state["PATH_DB"] and (question := st.chat_input("Enter your questi
                 # Store response
                 msgs.add_ai_message(response_1)
                 msgs.add_ai_message(f"DATAFRAME_INDEX:{df_index}")
-                
+
                 # Write Results
                 st.chat_message("ai").write(response_1)
                 st.dataframe(response_df)
-        

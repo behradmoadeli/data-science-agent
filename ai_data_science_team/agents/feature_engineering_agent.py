@@ -130,10 +130,14 @@ class FeatureEngineeringAgent(BaseAgent):
     --------
     ```python
     import pandas as pd
-    from langchain_openai import ChatOpenAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
     from ai_data_science_team.agents import FeatureEngineeringAgent
+    import os
+    from dotenv import load_dotenv
 
-    llm = ChatOpenAI(model="gpt-4o-mini")
+    load_dotenv()
+
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     feature_agent = FeatureEngineeringAgent(
         model=llm,
@@ -599,7 +603,11 @@ def make_feature_engineering_agent(
         """
         Lightweight schema summary to keep prompts small and focused.
         """
-        df_limited = df.iloc[:, :MAX_SUMMARY_COLUMNS] if df.shape[1] > MAX_SUMMARY_COLUMNS else df
+        df_limited = (
+            df.iloc[:, :MAX_SUMMARY_COLUMNS]
+            if df.shape[1] > MAX_SUMMARY_COLUMNS
+            else df
+        )
         schema = []
         n_rows = len(df_limited)
         for col in df_limited.columns:
@@ -617,7 +625,10 @@ def make_feature_engineering_agent(
                     "sample_values": sample_vals,
                 }
             )
-        return json.dumps({"n_rows": n_rows, "n_cols": df_limited.shape[1], "schema": schema}, indent=2)
+        return json.dumps(
+            {"n_rows": n_rows, "n_cols": df_limited.shape[1], "schema": schema},
+            indent=2,
+        )
 
     # Define GraphState for the router
     class GraphState(TypedDict):

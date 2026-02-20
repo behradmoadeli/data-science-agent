@@ -1,3 +1,9 @@
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file if it exists
+load_dotenv()
+
 from ai_data_science_team.agents import (
     DataCleaningAgent,
     DataLoaderToolsAgent,
@@ -17,6 +23,6 @@ from ai_data_science_team.ml_agents import (
 )
 
 from ai_data_science_team.multiagents import (
-    SQLDataAnalyst, 
-    PandasDataAnalyst, 
+    SQLDataAnalyst,
+    PandasDataAnalyst,
 )

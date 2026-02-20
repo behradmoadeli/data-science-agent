@@ -7,7 +7,9 @@
 # Imports
 # !pip install git+https://github.com/business-science/ai-data-science-team.git --upgrade
 
-from openai import OpenAI
+import os
+from dotenv import load_dotenv
+
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
@@ -15,11 +17,14 @@ from pathlib import Path
 import html
 
 from langchain_community.chat_message_histories import StreamlitChatMessageHistory
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from ai_data_science_team.ds_agents import EDAToolsAgent
 from ai_data_science_team.utils.matplotlib import matplotlib_from_base64
 from ai_data_science_team.utils.plotly import plotly_from_dict
+
+# Load environment variables
+load_dotenv()
 
 # Helpers
 
@@ -117,7 +122,7 @@ def render_report_iframe(
 # STREAMLIT APP SETUP (including data upload, API key, etc.)
 # =============================================================================
 
-MODEL_LIST = ["gpt-4o-mini", "gpt-4o"]
+MODEL_LIST = ["gemini-2.0-flash-exp", "gemini-1.5-flash"]
 TITLE = "Your Exploratory Data Analysis (EDA) Copilot"
 st.set_page_config(page_title=TITLE, page_icon="📊")
 st.title("📊 " + TITLE)
@@ -179,28 +184,38 @@ else:
     else:
         st.info("Please upload a CSV or Excel file or Use Demo Data to proceed.")
 
-# Sidebar: OpenAI API Key and Model Selection
-st.sidebar.header("Enter your OpenAI API Key")
-st.session_state["OPENAI_API_KEY"] = st.sidebar.text_input(
+# Sidebar: Gemini API Key and Model Selection
+st.sidebar.header("Enter your Gemini API Key")
+
+# Try to load from environment first
+default_api_key = os.getenv("GEMINI_API_KEY", "")
+
+st.session_state["GEMINI_API_KEY"] = st.sidebar.text_input(
     "API Key",
+    value=default_api_key,
     type="password",
-    help="Your OpenAI API key is required for the app to function.",
+    help="Your Gemini API key is required for the app to function. You can also set it in a .env file as GEMINI_API_KEY.",
 )
 
-if st.session_state["OPENAI_API_KEY"]:
-    client = OpenAI(api_key=st.session_state["OPENAI_API_KEY"])
+if st.session_state["GEMINI_API_KEY"]:
     try:
-        models = client.models.list()
+        # Test by creating an LLM instance
+        test_llm = ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash-exp",
+            google_api_key=st.session_state["GEMINI_API_KEY"],
+        )
         st.success("API Key is valid!")
     except Exception as e:
         st.error(f"Invalid API Key: {e}")
 else:
-    st.info("Please enter your OpenAI API Key to proceed.")
+    st.info("Please enter your Gemini API Key to proceed.")
     st.stop()
 
-model_option = st.sidebar.selectbox("Choose OpenAI model", MODEL_LIST, index=0)
-OPENAI_LLM = ChatOpenAI(model=model_option, api_key=st.session_state["OPENAI_API_KEY"])
-llm = OPENAI_LLM
+model_option = st.sidebar.selectbox("Choose Gemini model", MODEL_LIST, index=0)
+GEMINI_LLM = ChatGoogleGenerativeAI(
+    model=model_option, google_api_key=st.session_state["GEMINI_API_KEY"]
+)
+llm = GEMINI_LLM
 
 # =============================================================================
 # CHAT MESSAGE HISTORY AND ARTIFACT STORAGE
@@ -384,8 +399,8 @@ if st.session_state["DATA_RAW"] is not None:
     # Use the built-in chat input widget
     question = st.chat_input("Enter your question here:", key="query_input")
     if question:
-        if not st.session_state["OPENAI_API_KEY"]:
-            st.error("Please enter your OpenAI API Key to proceed.")
+        if not st.session_state["GEMINI_API_KEY"]:
+            st.error("Please enter your Gemini API Key to proceed.")
             st.stop()
 
         with st.spinner("Thinking..."):

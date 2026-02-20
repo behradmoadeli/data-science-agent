@@ -13,11 +13,17 @@ AI Pipeline Studio is a Streamlit app that centers your workflow around a visual
 ### Requirements
 - Python 3.10+
 - Dependencies from the project (installable via `pip install -e .`)
-- OpenAI API key (or Ollama if running local models)
+- Gemini API key (or Ollama if running local models)
 
 ### Install
 ```bash
 pip install -e .
+```
+
+### Configure your API key
+Create a `.env` file in the project root with your Gemini API key:
+```bash
+GEMINI_API_KEY=your_api_key_here
 ```
 
 ### Run
@@ -43,7 +49,7 @@ You can convert a full-data project to metadata-only at any time.
 ![AI Pipeline Studio](../../img/apps/ai_pipeline_studio_app.jpg)
 
 ## Configuration Tips
-- Choose a model in the sidebar (OpenAI or Ollama).
+- Choose a model in the sidebar (Gemini or Ollama).
 - Enable short-term memory if you want multi-turn context.
 - Turn on verbose logs to debug agent failures (see `logs/`).
 - For large datasets, keep dataset caching off unless needed.

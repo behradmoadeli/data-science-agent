@@ -128,11 +128,15 @@ class H2OMLAgent(BaseAgent):
     Examples
     --------
     ```python
-    from langchain_openai import ChatOpenAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
     import pandas as pd
     from ai_data_science_team.ml_agents import H2OMLAgent
+    import os
+    from dotenv import load_dotenv
 
-    llm = ChatOpenAI(model="gpt-4o-mini")
+    load_dotenv()
+
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     df = pd.read_csv("data/churn_data.csv")
 
@@ -887,9 +891,9 @@ def make_h2o_ml_agent(
 
     # 3) Execute code
     def execute_h2o_code(state):
-        user_instructions = state.get("user_instructions") or get_last_user_message_content(
-            state.get("messages", [])
-        )
+        user_instructions = state.get(
+            "user_instructions"
+        ) or get_last_user_message_content(state.get("messages", []))
         target_col = state.get("target_variable")
         target_col = str(target_col).strip() if isinstance(target_col, str) else ""
 
@@ -897,7 +901,10 @@ def make_h2o_ml_agent(
             if target_col and target_col in df.columns:
                 return target_col
             # Heuristic for churn-like requests
-            if isinstance(user_instructions, str) and "churn" in user_instructions.lower():
+            if (
+                isinstance(user_instructions, str)
+                and "churn" in user_instructions.lower()
+            ):
                 if "Churn" in df.columns:
                     return "Churn"
                 if "churn" in df.columns:
@@ -945,11 +952,20 @@ def make_h2o_ml_agent(
                 try:
                     is_bool = pd.api.types.is_bool_dtype(df[target_col_final])
                     is_object = pd.api.types.is_object_dtype(df[target_col_final])
-                    is_category = pd.api.types.is_categorical_dtype(df[target_col_final])
+                    is_category = pd.api.types.is_categorical_dtype(
+                        df[target_col_final]
+                    )
                     is_numeric = pd.api.types.is_numeric_dtype(df[target_col_final])
-                    if is_bool or is_object or is_category or (is_numeric and nunique == 2):
+                    if (
+                        is_bool
+                        or is_object
+                        or is_category
+                        or (is_numeric and nunique == 2)
+                    ):
                         # Normalize numeric 0/1 or 1/2, etc. to strings then category for stable factor inference.
-                        df[target_col_final] = df[target_col_final].astype(str).astype("category")
+                        df[target_col_final] = (
+                            df[target_col_final].astype(str).astype("category")
+                        )
                 except Exception:
                     pass
             return df
@@ -1005,10 +1021,15 @@ def make_h2o_ml_agent(
                             from mlflow.tracking import MlflowClient
                             import re
 
-                            if isinstance(mlflow_artifact_root, str) and mlflow_artifact_root.strip():
+                            if (
+                                isinstance(mlflow_artifact_root, str)
+                                and mlflow_artifact_root.strip()
+                            ):
                                 root = Path(mlflow_artifact_root).expanduser().resolve()
                                 root.mkdir(parents=True, exist_ok=True)
-                                safe = re.sub(r"[^A-Za-z0-9._-]+", "_", str(exp_name)).strip("_")
+                                safe = re.sub(
+                                    r"[^A-Za-z0-9._-]+", "_", str(exp_name)
+                                ).strip("_")
                                 safe = safe or "H2O_AutoML"
                                 artifact_location = (root / safe).as_uri()
                                 client = MlflowClient(tracking_uri=mlflow_tracking_uri)
@@ -1035,9 +1056,21 @@ def make_h2o_ml_agent(
                             # 1) MLflow table json: {"columns": [...], "data": [[...], ...]}
                             # 2) pandas.DataFrame.to_dict() outputs (dict-of-dicts or dict-of-lists)
                             # 3) list-of-records
-                            cols = lb_dict.get("columns") if isinstance(lb_dict, dict) else None
-                            rows = lb_dict.get("data") if isinstance(lb_dict, dict) else None
-                            if isinstance(cols, list) and isinstance(rows, list) and rows:
+                            cols = (
+                                lb_dict.get("columns")
+                                if isinstance(lb_dict, dict)
+                                else None
+                            )
+                            rows = (
+                                lb_dict.get("data")
+                                if isinstance(lb_dict, dict)
+                                else None
+                            )
+                            if (
+                                isinstance(cols, list)
+                                and isinstance(rows, list)
+                                and rows
+                            ):
                                 first = rows[0]
                                 if isinstance(first, list) and len(first) == len(cols):
                                     out = {}
@@ -1078,7 +1111,8 @@ def make_h2o_ml_agent(
                         # Only start our own run if the generated code didn't already do it.
                         run_ctx = (
                             mlflow.start_run(run_id=str(existing_run_id))
-                            if isinstance(existing_run_id, str) and existing_run_id.strip()
+                            if isinstance(existing_run_id, str)
+                            and existing_run_id.strip()
                             else mlflow.start_run(run_name=mlflow_run_name)
                         )
                         with run_ctx as run:
@@ -1091,15 +1125,26 @@ def make_h2o_ml_agent(
                             # Tags/params
                             try:
                                 mlflow.set_tag("agent", AGENT_NAME)
-                                if isinstance(user_instructions, str) and user_instructions.strip():
-                                    mlflow.set_tag("user_instructions", user_instructions.strip()[:5000])
+                                if (
+                                    isinstance(user_instructions, str)
+                                    and user_instructions.strip()
+                                ):
+                                    mlflow.set_tag(
+                                        "user_instructions",
+                                        user_instructions.strip()[:5000],
+                                    )
                             except Exception:
                                 pass
                             try:
                                 mlflow.log_params(
                                     {
-                                        "target_variable": target_col_final or target_col or "",
-                                        "function_name": state.get("h2o_train_function_name") or "",
+                                        "target_variable": target_col_final
+                                        or target_col
+                                        or "",
+                                        "function_name": state.get(
+                                            "h2o_train_function_name"
+                                        )
+                                        or "",
                                         "max_runtime_secs": 30,
                                         "best_model_id": best_id or "",
                                     }
@@ -1148,12 +1193,15 @@ def make_h2o_ml_agent(
                                     )
                                     model_uri = (
                                         model_uri
-                                        if isinstance(model_uri, str) and model_uri.strip()
+                                        if isinstance(model_uri, str)
+                                        and model_uri.strip()
                                         else f"runs:/{run_id}/model"
                                     )
                                     result["mlflow_model_uri"] = model_uri
                                     if isinstance(result.get("h2o_train_result"), dict):
-                                        result["h2o_train_result"]["mlflow_model_uri"] = model_uri
+                                        result["h2o_train_result"][
+                                            "mlflow_model_uri"
+                                        ] = model_uri
 
                                     # Best-effort: capture a lightweight listing of model files
                                     # so users can see that the model is persisted even if MLflow
@@ -1165,9 +1213,13 @@ def make_h2o_ml_agent(
                                         client = MlflowClient()
                                         model_files = [
                                             getattr(a, "path", None)
-                                            for a in client.list_artifacts(run_id, path="model")
+                                            for a in client.list_artifacts(
+                                                run_id, path="model"
+                                            )
                                         ]
-                                        model_files = [p for p in model_files if isinstance(p, str)]
+                                        model_files = [
+                                            p for p in model_files if isinstance(p, str)
+                                        ]
                                     except Exception:
                                         model_files = []
 
@@ -1179,10 +1231,14 @@ def make_h2o_ml_agent(
                                     }
                                     result["mlflow_model"] = model_art
                                     if isinstance(result.get("h2o_train_result"), dict):
-                                        result["h2o_train_result"]["mlflow_model"] = model_art
+                                        result["h2o_train_result"]["mlflow_model"] = (
+                                            model_art
+                                        )
 
                                     try:
-                                        mlflow.log_dict(model_art, artifact_file="model_info.json")
+                                        mlflow.log_dict(
+                                            model_art, artifact_file="model_info.json"
+                                        )
                                     except Exception:
                                         pass
                             except Exception:

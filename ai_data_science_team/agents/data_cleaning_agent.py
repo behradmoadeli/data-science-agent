@@ -128,10 +128,14 @@ class DataCleaningAgent(BaseAgent):
     --------
     ```python
     import pandas as pd
-    from langchain_openai import ChatOpenAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
     from ai_data_science_team.agents import DataCleaningAgent
+    import os
+    from dotenv import load_dotenv
 
-    llm = ChatOpenAI(model="gpt-4o-mini")
+    load_dotenv()
+
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     data_cleaning_agent = DataCleaningAgent(
         model=llm, n_samples=50, log=True, log_path="logs", human_in_the_loop=True
@@ -284,13 +288,13 @@ class DataCleaningAgent(BaseAgent):
             **kwargs,
         )
         return None
+
     def _make_compiled_graph(self):
         """
         Create the compiled graph for the data cleaning agent. Running this method will reset the response to None.
         """
         self.response = None
         return make_data_cleaning_agent(**self._params)
-
 
     def get_workflow_summary(self, markdown=False):
         """
@@ -430,10 +434,14 @@ def make_data_cleaning_agent(
     -------
     ``` python
     import pandas as pd
-    from langchain_openai import ChatOpenAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
     from ai_data_science_team.agents import data_cleaning_agent
+    import os
+    from dotenv import load_dotenv
 
-    llm = ChatOpenAI(model = "gpt-4o-mini")
+    load_dotenv()
+
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     data_cleaning_agent = make_data_cleaning_agent(llm)
 
@@ -472,7 +480,11 @@ def make_data_cleaning_agent(
     )
 
     def _summarize_df_for_prompt(df: pd.DataFrame) -> str:
-        df_limited = df.iloc[:, :MAX_SUMMARY_COLUMNS] if df.shape[1] > MAX_SUMMARY_COLUMNS else df
+        df_limited = (
+            df.iloc[:, :MAX_SUMMARY_COLUMNS]
+            if df.shape[1] > MAX_SUMMARY_COLUMNS
+            else df
+        )
         summary = "\n\n".join(
             get_dataframe_summary(
                 [df_limited],

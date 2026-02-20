@@ -129,11 +129,15 @@ class DataWranglingAgent(BaseAgent):
     --------
     ```python
     import pandas as pd
-    from langchain_openai import ChatOpenAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
     from ai_data_science_team.agents import DataWranglingAgent
+    import os
+    from dotenv import load_dotenv
+
+    load_dotenv()
 
     # Single dataset example
-    llm = ChatOpenAI(model="gpt-4o-mini")
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     data_wrangling_agent = DataWranglingAgent(
         model=llm,
@@ -621,8 +625,13 @@ def make_data_wrangling_agent(
         """Lightweight schema summary for dict or list-of-dict inputs."""
         if isinstance(data_raw, dict):
             dataframes = {"main": pd.DataFrame.from_dict(data_raw)}
-        elif isinstance(data_raw, list) and all(isinstance(item, dict) for item in data_raw):
-            dataframes = {f"dataset_{i}": pd.DataFrame.from_dict(d) for i, d in enumerate(data_raw, start=1)}
+        elif isinstance(data_raw, list) and all(
+            isinstance(item, dict) for item in data_raw
+        ):
+            dataframes = {
+                f"dataset_{i}": pd.DataFrame.from_dict(d)
+                for i, d in enumerate(data_raw, start=1)
+            }
         else:
             raise ValueError("data_raw must be a dict or a list of dicts.")
 
@@ -742,9 +751,9 @@ def make_data_wrangling_agent(
             all_datasets_summary_str = _summarize_data_raw(data_raw)
             steps_for_prompt = state.get("recommended_steps") or DEFAULT_WRANGLING_STEPS
         else:
-            all_datasets_summary_str = state.get("all_datasets_summary") or _summarize_data_raw(
-                data_raw
-            )
+            all_datasets_summary_str = state.get(
+                "all_datasets_summary"
+            ) or _summarize_data_raw(data_raw)
             steps_for_prompt = state.get("recommended_steps") or DEFAULT_WRANGLING_STEPS
 
         data_wrangling_prompt = PromptTemplate(
@@ -853,9 +862,7 @@ def make_data_wrangling_agent(
 
         def human_review(
             state: GraphState,
-        ) -> Command[
-            Literal["recommend_wrangling_steps", "report_agent_outputs"]
-        ]:
+        ) -> Command[Literal["recommend_wrangling_steps", "report_agent_outputs"]]:
             return node_func_human_review(
                 state=state,
                 prompt_text=prompt_text_human_review,
@@ -907,7 +914,9 @@ def make_data_wrangling_agent(
 
                 df_raw = state.get("data_raw")
                 if isinstance(df_raw, list):
-                    df_raw_df = pd.concat([pd.DataFrame(r) for r in df_raw], ignore_index=True)
+                    df_raw_df = pd.concat(
+                        [pd.DataFrame(r) for r in df_raw], ignore_index=True
+                    )
                 else:
                     df_raw_df = pd.DataFrame(df_raw)
 

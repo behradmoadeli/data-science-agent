@@ -120,10 +120,14 @@ class DataVisualizationAgent(BaseAgent):
     --------
     ```python
     import pandas as pd
-    from langchain_openai import ChatOpenAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
     from ai_data_science_team.agents import DataVisualizationAgent
+    import os
+    from dotenv import load_dotenv
 
-    llm = ChatOpenAI(model="gpt-4o-mini")
+    load_dotenv()
+
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     data_visualization_agent = DataVisualizationAgent(
         model=llm,
@@ -683,8 +687,10 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
     def _format_profile_for_prompt(profile: dict) -> str:
         if not isinstance(profile, dict):
             return ""
+
         def _fmt(values: list[str]) -> str:
             return ", ".join(values[:12]) if values else "None"
+
         return "\n".join(
             [
                 f"Rows: {profile.get('n_rows')}",
@@ -774,14 +780,18 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
             missing.add(match)
         for match in re.findall(r"\\['([^']+)'\\]\\s+not in index", error_text):
             missing.add(match)
-        list_match = re.search(r"None of \\[(.*)\\] are in the \\[columns\\]", error_text)
+        list_match = re.search(
+            r"None of \\[(.*)\\] are in the \\[columns\\]", error_text
+        )
         if list_match:
             raw = list_match.group(1)
             for col in re.findall(r"'([^']+)'", raw):
                 missing.add(col)
         return [m for m in missing if isinstance(m, str) and m.strip()]
 
-    def _suggest_column_fallbacks(missing: list[str], columns: list[str]) -> dict[str, str]:
+    def _suggest_column_fallbacks(
+        missing: list[str], columns: list[str]
+    ) -> dict[str, str]:
         suggestions = {}
         if not missing or not columns:
             return suggestions
@@ -811,10 +821,12 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
             if not isinstance(old, str) or not isinstance(new, str):
                 continue
             patched = re.sub(rf"'{re.escape(old)}'", f"'{new}'", patched)
-            patched = re.sub(rf"\\\"{re.escape(old)}\\\"", f'\"{new}\"', patched)
+            patched = re.sub(rf"\\\"{re.escape(old)}\\\"", f'"{new}"', patched)
         return patched, patched != code
 
-    def _build_fallback_chart(df: pd.DataFrame, profile: dict) -> tuple[dict | None, str | None]:
+    def _build_fallback_chart(
+        df: pd.DataFrame, profile: dict
+    ) -> tuple[dict | None, str | None]:
         try:
             import plotly.express as px
             import plotly.io as pio
@@ -879,7 +891,9 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
 
     def _summarize_df_for_prompt(df: pd.DataFrame) -> str:
         df_limited = (
-            df.iloc[:, :MAX_SUMMARY_COLUMNS] if df.shape[1] > MAX_SUMMARY_COLUMNS else df
+            df.iloc[:, :MAX_SUMMARY_COLUMNS]
+            if df.shape[1] > MAX_SUMMARY_COLUMNS
+            else df
         )
         summary = "\n\n".join(
             get_dataframe_summary(
@@ -1151,7 +1165,11 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
         print("    * EXECUTE DATA VISUALIZATION CODE (SANDBOXED)")
 
         data_raw = state.get("data_raw") or {}
-        df = pd.DataFrame.from_dict(data_raw) if isinstance(data_raw, dict) else pd.DataFrame()
+        df = (
+            pd.DataFrame.from_dict(data_raw)
+            if isinstance(data_raw, dict)
+            else pd.DataFrame()
+        )
         profile = _profile_dataframe(df)
 
         code_snippet = state.get("data_visualization_function")
@@ -1207,14 +1225,20 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
                     viz_summary = f"Plotly figure with {traces} trace(s) generated."
                     # Validate chart type against explicit user request when possible.
                     req_raw = state.get("user_instructions") or ""
-                    if isinstance(req_raw, str) and "[Pipeline Studio context]" in req_raw:
+                    if (
+                        isinstance(req_raw, str)
+                        and "[Pipeline Studio context]" in req_raw
+                    ):
                         req_raw = req_raw.split("[Pipeline Studio context]", 1)[0]
                     req = req_raw.lower() if isinstance(req_raw, str) else ""
                     if req:
                         import re
 
                         def _has_word(word: str) -> bool:
-                            return re.search(rf"\\b{re.escape(word)}s?\\b", req) is not None
+                            return (
+                                re.search(rf"\\b{re.escape(word)}s?\\b", req)
+                                is not None
+                            )
 
                         expected = set()
                         if _has_word("violin"):
@@ -1249,9 +1273,15 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
                         mismatch = None
                         if "violin" in expected and "violin" not in actual_types:
                             mismatch = "violin"
-                        elif "box" in expected and "violin" not in expected and "box" not in actual_types:
+                        elif (
+                            "box" in expected
+                            and "violin" not in expected
+                            and "box" not in actual_types
+                        ):
                             mismatch = "box"
-                        elif "histogram" in expected and "histogram" not in actual_types:
+                        elif (
+                            "histogram" in expected and "histogram" not in actual_types
+                        ):
                             mismatch = "histogram"
                         elif "bar" in expected and "bar" not in actual_types:
                             mismatch = "bar"

@@ -7,7 +7,8 @@
 # Imports
 # !pip install git+https://github.com/business-science/ai-data-science-team.git --upgrade
 
-from openai import OpenAI
+import os
+from dotenv import load_dotenv
 
 import streamlit as st
 import pandas as pd
@@ -15,7 +16,7 @@ import plotly.io as pio
 import json
 
 from langchain_community.chat_message_histories import StreamlitChatMessageHistory
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from ai_data_science_team import (
     PandasDataAnalyst,
@@ -23,10 +24,13 @@ from ai_data_science_team import (
     DataVisualizationAgent,
 )
 
+# Load environment variables
+load_dotenv()
+
 
 # * APP INPUTS ----
 
-MODEL_LIST = ["gpt-4o-mini", "gpt-4o"]
+MODEL_LIST = ["gemini-2.0-flash-exp", "gemini-1.5-flash"]
 TITLE = "Pandas Data Analyst AI Copilot"
 
 # ---------------------------
@@ -57,39 +61,44 @@ with st.expander("Example Questions", expanded=False):
     )
 
 # ---------------------------
-# OpenAI API Key Entry and Test
+# Gemini API Key Entry and Test
 # ---------------------------
 
-st.sidebar.header("Enter your OpenAI API Key")
+st.sidebar.header("Enter your Gemini API Key")
 
-st.session_state["OPENAI_API_KEY"] = st.sidebar.text_input(
+# Try to load from environment first
+default_api_key = os.getenv("GEMINI_API_KEY", "")
+
+st.session_state["GEMINI_API_KEY"] = st.sidebar.text_input(
     "API Key",
+    value=default_api_key,
     type="password",
-    help="Your OpenAI API key is required for the app to function.",
+    help="Your Gemini API key is required for the app to function. You can also set it in a .env file as GEMINI_API_KEY.",
 )
 
-# Test OpenAI API Key
-if st.session_state["OPENAI_API_KEY"]:
-    # Set the API key for OpenAI
-    client = OpenAI(api_key=st.session_state["OPENAI_API_KEY"])
-
-    # Test the API key (optional)
+# Test Gemini API Key
+if st.session_state["GEMINI_API_KEY"]:
     try:
-        # Example: Fetch models to validate the key
-        models = client.models.list()
+        # Test by creating an LLM instance
+        test_llm = ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash-exp",
+            google_api_key=st.session_state["GEMINI_API_KEY"],
+        )
         st.success("API Key is valid!")
     except Exception as e:
         st.error(f"Invalid API Key: {e}")
 else:
-    st.info("Please enter your OpenAI API Key to proceed.")
+    st.info("Please enter your Gemini API Key to proceed.")
     st.stop()
 
 
-# * OpenAI Model Selection
+# * Gemini Model Selection
 
-model_option = st.sidebar.selectbox("Choose OpenAI model", MODEL_LIST, index=0)
+model_option = st.sidebar.selectbox("Choose Gemini model", MODEL_LIST, index=0)
 
-llm = ChatOpenAI(model=model_option, api_key=st.session_state["OPENAI_API_KEY"])
+llm = ChatGoogleGenerativeAI(
+    model=model_option, google_api_key=st.session_state["GEMINI_API_KEY"]
+)
 
 
 # ---------------------------
@@ -178,8 +187,8 @@ pandas_data_analyst = PandasDataAnalyst(
 # ---------------------------
 
 if question := st.chat_input("Enter your question here:", key="query_input"):
-    if not st.session_state["OPENAI_API_KEY"]:
-        st.error("Please enter your OpenAI API Key to proceed.")
+    if not st.session_state["GEMINI_API_KEY"]:
+        st.error("Please enter your Gemini API Key to proceed.")
         st.stop()
 
     with st.spinner("Thinking..."):
