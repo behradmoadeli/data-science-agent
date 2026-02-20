@@ -4466,7 +4466,7 @@ with st.sidebar:
             try:
                 # Test the key by creating an LLM instance
                 test_llm = ChatGoogleGenerativeAI(
-                    model="gemini-2.0-flash-exp", google_api_key=gemini_key
+                    model="gemini-2.0-flash", google_api_key=gemini_key
                 )
                 key_status = "ok"
                 st.success("API Key is valid!")
@@ -4482,7 +4482,7 @@ with st.sidebar:
         model_choice = st.selectbox(
             "Model",
             [
-                "gemini-2.0-flash-exp",
+                "gemini-2.0-flash",
                 "gemini-1.5-flash",
                 "gpt-4o-mini",
                 "gpt-4o",

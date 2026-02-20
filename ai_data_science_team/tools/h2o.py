@@ -36,7 +36,10 @@ def train_h2o_automl(
         The target column name.
     max_runtime_secs : int, default 30
     exclude_algos : List[str], optional
-        e.g., ["DeepLearning"]. If not provided, defaults to ["DeepLearning"].
+        Algorithms to exclude from AutoML training.
+        Defaults to ["XGBoost", "DeepLearning"] because:
+        - XGBoost requires libxgboost4j (Java bindings) not included in H2O pip distribution
+        - DeepLearning can be slow and resource-intensive for quick iterations
     balance_classes : bool, default True
     nfolds : int, default 5
     seed : int, default 42
@@ -96,7 +99,8 @@ def train_h2o_automl(
 
         run_context = nullcontext()
 
-    exclude_algos = exclude_algos or ["DeepLearning"]  # default if not provided
+    # Default: exclude XGBoost (no libxgboost4j in H2O pip) and DeepLearning (slow)
+    exclude_algos = exclude_algos or ["XGBoost", "DeepLearning"]
 
     # Convert data to DataFrame
     df = pd.DataFrame(data_raw)

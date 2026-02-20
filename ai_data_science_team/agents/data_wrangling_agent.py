@@ -137,7 +137,7 @@ class DataWranglingAgent(BaseAgent):
     load_dotenv()
 
     # Single dataset example
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     data_wrangling_agent = DataWranglingAgent(
         model=llm,
@@ -580,7 +580,7 @@ def make_data_wrangling_agent(
     Example
     -------
     ``` python
-    from langchain_openai import ChatOpenAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
     import pandas as pd
 
     df = pd.DataFrame({
@@ -588,7 +588,7 @@ def make_data_wrangling_agent(
         'value': [10, 20, 15, 5]
     })
 
-    llm = ChatOpenAI(model="gpt-4o-mini")
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     data_wrangling_agent = make_data_wrangling_agent(llm)
 

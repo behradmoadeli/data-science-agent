@@ -135,7 +135,7 @@ class DataCleaningAgent(BaseAgent):
 
     load_dotenv()
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     data_cleaning_agent = DataCleaningAgent(
         model=llm, n_samples=50, log=True, log_path="logs", human_in_the_loop=True
@@ -441,7 +441,7 @@ def make_data_cleaning_agent(
 
     load_dotenv()
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     data_cleaning_agent = make_data_cleaning_agent(llm)
 

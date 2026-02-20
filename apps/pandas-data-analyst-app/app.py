@@ -30,7 +30,7 @@ load_dotenv()
 
 # * APP INPUTS ----
 
-MODEL_LIST = ["gemini-2.0-flash-exp", "gemini-1.5-flash"]
+MODEL_LIST = ["gemini-2.0-flash", "gemini-1.5-flash"]
 TITLE = "Pandas Data Analyst AI Copilot"
 
 # ---------------------------
@@ -81,7 +81,7 @@ if st.session_state["GEMINI_API_KEY"]:
     try:
         # Test by creating an LLM instance
         test_llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash-exp",
+            model="gemini-2.0-flash",
             google_api_key=st.session_state["GEMINI_API_KEY"],
         )
         st.success("API Key is valid!")

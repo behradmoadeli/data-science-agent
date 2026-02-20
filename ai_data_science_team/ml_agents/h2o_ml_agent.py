@@ -47,9 +47,10 @@ DEFAULT_ML_STEPS = format_recommended_steps(
     """
 1. Verify target column exists and has sufficient non-null values; ensure target is categorical for classification or numeric for regression.
 2. Review column types; let H2OAutoML handle encoding, avoid heavy feature engineering here.
-3. Cap runtime and/or max_models to fit resource budget; disable deep learning if not needed.
-4. Use stratified folds (nfolds) if target is imbalanced; consider balance_classes=True for classification.
-5. Save leaderboard and best model; optionally log metrics/artifacts to MLflow if enabled.
+3. Cap runtime and/or max_models to fit resource budget.
+4. Note: XGBoost is excluded by default (not available in H2O pip distribution); use GBM, GLM, DRF instead.
+5. Use stratified folds (nfolds) if target is imbalanced; consider balance_classes=True for classification.
+6. Save leaderboard and best model; optionally log metrics/artifacts to MLflow if enabled.
     """,
     heading="# Recommended ML Steps:",
 )
@@ -136,7 +137,7 @@ class H2OMLAgent(BaseAgent):
 
     load_dotenv()
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     df = pd.read_csv("data/churn_data.csv")
 
@@ -678,7 +679,8 @@ def make_h2o_ml_agent(
                     from contextlib import nullcontext
                     run_context = nullcontext()
 
-                exclude_algos = exclude_algos or ["DeepLearning"]  # default if not provided
+                # Default: exclude XGBoost (no libxgboost4j in H2O pip) and DeepLearning (slow)
+                exclude_algos = exclude_algos or ["XGBoost", "DeepLearning"]
 
                 # Convert data to DataFrame
                 df = pd.DataFrame(data_raw)

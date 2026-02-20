@@ -127,7 +127,7 @@ class DataVisualizationAgent(BaseAgent):
 
     load_dotenv()
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     data_visualization_agent = DataVisualizationAgent(
         model=llm,
@@ -573,10 +573,10 @@ def make_data_visualization_agent(
     --------
     ``` python
     import pandas as pd
-    from langchain_openai import ChatOpenAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
     from ai_data_science_team.agents import data_visualization_agent
 
-    llm = ChatOpenAI(model="gpt-4o-mini")
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     data_visualization_agent = make_data_visualization_agent(llm)
 

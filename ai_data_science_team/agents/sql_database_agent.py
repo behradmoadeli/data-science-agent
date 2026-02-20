@@ -136,7 +136,7 @@ class SQLDatabaseAgent(BaseAgent):
     sql_engine = sql.create_engine("sqlite:///data/my_database.db")
     conn = sql_engine.connect()
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     sql_database_agent = SQLDatabaseAgent(
         model=llm,
@@ -461,7 +461,7 @@ def make_sql_database_agent(
 
     Parameters
     ----------
-    model : ChatOpenAI
+    model : ChatGoogleGenerativeAI
         The language model to use for the agent.
     connection : sqlalchemy.engine.base.Engine
         The connection to the SQL database.
@@ -510,7 +510,7 @@ def make_sql_database_agent(
 
     conn = sql_engine.connect()
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     sql_agent = make_sql_database_agent(
         model=llm,

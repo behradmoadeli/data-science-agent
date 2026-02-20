@@ -118,12 +118,12 @@ class SQLDataAnalyst(BaseAgent):
         Example:
         --------
         ``` python
-        from langchain_openai import ChatOpenAI
+        from langchain_google_genai import ChatGoogleGenerativeAI
         import sqlalchemy as sql
         from ai_data_science_team.multiagents import SQLDataAnalyst
         from ai_data_science_team.agents import SQLDatabaseAgent, DataVisualizationAgent
 
-        llm = ChatOpenAI(model = "gpt-4o-mini")
+        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
 
         sql_engine = sql.create_engine("sqlite:///data/northwind.db")
 
@@ -191,12 +191,12 @@ class SQLDataAnalyst(BaseAgent):
         Example:
         --------
         ``` python
-        from langchain_openai import ChatOpenAI
+        from langchain_google_genai import ChatGoogleGenerativeAI
         import sqlalchemy as sql
         from ai_data_science_team.multiagents import SQLDataAnalyst
         from ai_data_science_team.agents import SQLDatabaseAgent, DataVisualizationAgent
 
-        llm = ChatOpenAI(model = "gpt-4o-mini")
+        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
 
         sql_engine = sql.create_engine("sqlite:///data/northwind.db")
 
@@ -254,7 +254,10 @@ class SQLDataAnalyst(BaseAgent):
         user_instructions = kwargs.pop("user_instructions", None)
         if user_instructions is None:
             for msg in reversed(messages):
-                if getattr(msg, "type", None) == "human" or getattr(msg, "role", None) == "user":
+                if (
+                    getattr(msg, "type", None) == "human"
+                    or getattr(msg, "role", None) == "user"
+                ):
                     user_instructions = msg.content
                     break
         response = self._compiled_graph.invoke(
@@ -284,7 +287,10 @@ class SQLDataAnalyst(BaseAgent):
         user_instructions = kwargs.pop("user_instructions", None)
         if user_instructions is None:
             for msg in reversed(messages):
-                if getattr(msg, "type", None) == "human" or getattr(msg, "role", None) == "user":
+                if (
+                    getattr(msg, "type", None) == "human"
+                    or getattr(msg, "role", None) == "user"
+                ):
                     user_instructions = msg.content
                     break
         response = await self._compiled_graph.ainvoke(
@@ -501,7 +507,10 @@ def make_sql_data_analyst(
             msgs = [("system", system_hint), ("user", ui)]
         if not ui:
             for msg in reversed(msgs):
-                if getattr(msg, "type", None) == "human" or getattr(msg, "role", None) == "user":
+                if (
+                    getattr(msg, "type", None) == "human"
+                    or getattr(msg, "role", None) == "user"
+                ):
                     ui = msg.content
                     break
         # Normalize any tuple messages into BaseMessage objects
@@ -610,7 +619,9 @@ def make_sql_data_analyst(
         if data_sql:
             try:
                 df = pd.DataFrame(data_sql)
-                parts.append(f"Returned table shape: {df.shape[0]} rows x {df.shape[1]} cols.")
+                parts.append(
+                    f"Returned table shape: {df.shape[0]} rows x {df.shape[1]} cols."
+                )
             except Exception:
                 parts.append("Returned table available.")
         if route == "chart":

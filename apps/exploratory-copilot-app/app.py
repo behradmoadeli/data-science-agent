@@ -122,7 +122,7 @@ def render_report_iframe(
 # STREAMLIT APP SETUP (including data upload, API key, etc.)
 # =============================================================================
 
-MODEL_LIST = ["gemini-2.0-flash-exp", "gemini-1.5-flash"]
+MODEL_LIST = ["gemini-2.0-flash", "gemini-1.5-flash"]
 TITLE = "Your Exploratory Data Analysis (EDA) Copilot"
 st.set_page_config(page_title=TITLE, page_icon="📊")
 st.title("📊 " + TITLE)
@@ -201,7 +201,7 @@ if st.session_state["GEMINI_API_KEY"]:
     try:
         # Test by creating an LLM instance
         test_llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash-exp",
+            model="gemini-2.0-flash",
             google_api_key=st.session_state["GEMINI_API_KEY"],
         )
         st.success("API Key is valid!")

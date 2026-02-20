@@ -137,7 +137,7 @@ class FeatureEngineeringAgent(BaseAgent):
 
     load_dotenv()
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", google_api_key=os.getenv("GEMINI_API_KEY"))
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     feature_agent = FeatureEngineeringAgent(
         model=llm,
@@ -533,10 +533,10 @@ def make_feature_engineering_agent(
     -------
     ``` python
     import pandas as pd
-    from langchain_openai import ChatOpenAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
     from ai_data_science_team.agents import feature_engineering_agent
 
-    llm = ChatOpenAI(model="gpt-4o-mini")
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=os.getenv("GEMINI_API_KEY"))
 
     feature_engineering_agent = make_feature_engineering_agent(llm)
 

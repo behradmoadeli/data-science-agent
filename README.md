@@ -91,6 +91,11 @@ Agent examples live in `examples/`. Notable agents:
 - Supervisor Agent (oversees other agents)
 - Custom tools for data science tasks
 
+### Important Notes
+
+**H2O AutoML XGBoost Limitation:**  
+The standard H2O pip distribution does not include XGBoost support. XGBoost requires Java bindings (`libxgboost4j`) that are not bundled with the pip package. H2O AutoML will use GBM (Gradient Boosting Machine), GLM, DRF (Distributed Random Forest), and other algorithms instead. XGBoost is excluded by default in the code to suppress warnings.
+
 ## Apps
 
 See all apps in `apps/`. Notable apps:
@@ -108,7 +113,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 load_dotenv()
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash-exp",
+    model="gemini-2.0-flash",
     google_api_key=os.getenv("GEMINI_API_KEY")
 )
 ```

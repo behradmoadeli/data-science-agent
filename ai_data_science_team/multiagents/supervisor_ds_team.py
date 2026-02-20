@@ -9,7 +9,7 @@ from langchain_core.output_parsers.openai_functions import JsonOutputFunctionsPa
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda
 from langchain_core.utils.json import parse_json_markdown
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from langgraph.graph import StateGraph, START, END
 from langgraph.types import Checkpointer
@@ -184,20 +184,9 @@ def make_supervisor_ds_team(
         "MLflow_Tools_Agent",
     ]
 
-    def _openai_requires_responses(model_name: str | None) -> bool:
-        model_name = model_name.strip().lower() if isinstance(model_name, str) else ""
-        if not model_name:
-            return False
-        if "codex" in model_name:
-            return True
-        return model_name in {"gpt-5.1-codex-mini"}
-
     if isinstance(model, str):
         llm_kwargs: dict[str, object] = {"model": model, "temperature": temperature}
-        if _openai_requires_responses(model):
-            llm_kwargs["use_responses_api"] = True
-            llm_kwargs["output_version"] = "responses/v1"
-        llm = ChatOpenAI(**llm_kwargs)
+        llm = ChatGoogleGenerativeAI(**llm_kwargs)
     else:
         llm = model
         # Best-effort: allow callers to pass an already-configured LLM
@@ -332,9 +321,9 @@ Examples:
         return {"next": "FINISH"}
 
     # Router chain:
-    # - For OpenAI models: use function-calling for high-precision routing.
+    # - For Gemini models: use function-calling for high-precision routing.
     # - For other chat models (e.g., Ollama): fall back to strict text parsing.
-    if isinstance(llm, ChatOpenAI):
+    if isinstance(llm, ChatGoogleGenerativeAI):
         supervisor_chain = (
             prompt
             | llm.bind(functions=[function_def], function_call={"name": "route"})
@@ -769,7 +758,9 @@ Examples:
             hydrated["data_sql"] = data_sql
         feature_data = state.get("feature_data")
         fe_art = (
-            artifacts.get("feature_engineering") if isinstance(artifacts, dict) else None
+            artifacts.get("feature_engineering")
+            if isinstance(artifacts, dict)
+            else None
         )
         if (
             feature_data is None
@@ -871,9 +862,11 @@ Examples:
                 if token.isdigit():
                     ordered = sorted(
                         datasets.items(),
-                        key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-                        if isinstance(kv[1], dict)
-                        else 0.0,
+                        key=lambda kv: (
+                            float(kv[1].get("created_ts") or 0.0)
+                            if isinstance(kv[1], dict)
+                            else 0.0
+                        ),
                         reverse=True,
                     )
                     idx = int(token) - 1
@@ -1892,9 +1885,11 @@ Examples:
             if active_id is None:
                 newest = sorted(
                     datasets.items(),
-                    key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-                    if isinstance(kv[1], dict)
-                    else 0.0,
+                    key=lambda kv: (
+                        float(kv[1].get("created_ts") or 0.0)
+                        if isinstance(kv[1], dict)
+                        else 0.0
+                    ),
                 )
                 active_id = newest[-1][0] if newest else None
 
@@ -2860,7 +2855,9 @@ Examples:
             "artifacts": {
                 **state.get("artifacts", {}),
                 "data_loader": loader_artifacts,
-                "data_loader_details": {"errors": loader_errors} if loader_errors else {},
+                "data_loader_details": {"errors": loader_errors}
+                if loader_errors
+                else {},
             },
             "last_worker": "Data_Loader_Tools_Agent",
             **downstream_resets,
@@ -2948,9 +2945,11 @@ Examples:
             selected_ids = [active_dataset_id]
             ordered = sorted(
                 datasets.items(),
-                key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-                if isinstance(kv[1], dict)
-                else 0.0,
+                key=lambda kv: (
+                    float(kv[1].get("created_ts") or 0.0)
+                    if isinstance(kv[1], dict)
+                    else 0.0
+                ),
                 reverse=True,
             )
             for did, _e in ordered:
@@ -2965,9 +2964,11 @@ Examples:
             try:
                 ordered = sorted(
                     datasets.items(),
-                    key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-                    if isinstance(kv[1], dict)
-                    else 0.0,
+                    key=lambda kv: (
+                        float(kv[1].get("created_ts") or 0.0)
+                        if isinstance(kv[1], dict)
+                        else 0.0
+                    ),
                     reverse=True,
                 )
                 for did, e in ordered[:10]:
@@ -4417,7 +4418,8 @@ Examples:
         if isinstance(eval_artifacts, dict) and eval_artifacts.get("error"):
             merged["messages"].append(
                 AIMessage(
-                    content="Model evaluation error:\n" + str(eval_artifacts.get("error")),
+                    content="Model evaluation error:\n"
+                    + str(eval_artifacts.get("error")),
                     name="model_evaluation_agent",
                 )
             )
